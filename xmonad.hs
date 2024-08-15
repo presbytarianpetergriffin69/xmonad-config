@@ -40,7 +40,7 @@ import XMonad.Layout.Renamed(renamed, Rename(Replace))
 -- hooks
 
 import XMonad.Hooks.EwmhDesktops
-import XMonad.Hooks.ManageDocks (manageDocks, avoidStruts)
+import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.DynamicLog
 import XMonad.Hooks.StatusBar
 import XMonad.Hooks.StatusBar.PP
@@ -54,6 +54,8 @@ import XMonad.Actions.CycleWS
 
 -- qualified
 
+import qualified DBus as D
+import qualified DBus.Client as D
 import qualified Codec.Binary.UTF8.String as UTF8
 import qualified XMonad.Util.Run as Run (safeSpawn, spawnPipe)
 
@@ -64,11 +66,11 @@ logMessage msg = spawn $ "echo '" ++ msg ++ "' >> /tmp/xmonad.log"
 
 main :: IO ()
 main = do
-  writeFile "/tmp/xmonad.log" ""
+  xmonad $ ewmhFullscreen $ ewmh $ docks $ myConfig
+  where
+myBar = "polybar"
 
-  panel <- spawnPipe "xfce4-panel"
-
-  xmonad $ xfceConfig
+myConfig = def
       { modMask = mod4Mask
       , focusFollowsMouse = True
       , clickJustFocuses = False
@@ -77,8 +79,10 @@ main = do
       , normalBorderColor = "#e7f2f8"
       , layoutHook = myLayoutHook 
       , keys = myKeys
+      , workspaces = myWorkspaces
       , manageHook = myManageHook 
       , startupHook = myStartupHook
+      , handleEventHook = handleEventHook def
       }
 
 myBrowser :: String
@@ -95,7 +99,8 @@ myScreenshot = "flameshot gui"
 
 myWorkspaces = ["1_dev", "2_www", "3_ide", "4_im", "5_stm", "6_doc", "7_vrt", "8_msc", "9_msu"]
 
-soundDir = "/opt/"
+mySoundDir :: String
+mySoundDir = "/opt/sounds/"
 
 myManageHook :: ManageHook
 myManageHook = composeAll
@@ -117,6 +122,7 @@ myManageHook = composeAll
 
 myStartupHook :: X ()
 myStartupHook = do
+  spawnOnce "polybar &"
   spawnOnce "picom &"
   spawnOnce "xscreensaver -no-splash &"
   spawnOnce "nitrogen --restore &"
@@ -168,6 +174,11 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
     , ((modm .|.  shiftMask,    xK_c), kill)      
     , ((modm .|.  shiftMask,    xK_p), spawn myDmenu)
     , ((modm .|.  shiftMask,    xK_s), spawn myScreenshot)
+    , ((modm .|.  shiftMask,    xK_k), spawn "rofi -show drun")
+    , ((modm,                   xK_q), do
+    spawn $ "mpv --no-video " ++ mySoundDir ++ "chord.wav" 
+    confirmPrompt def "exit" $ spawn "killall Xorg"
+    )
 -- layout keybinds
     , ((modm,                   xK_f), nextWS)
     , ((modm,                   xK_d), prevWS)
@@ -185,26 +196,23 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
     , ((mod1Mask,               xK_t), namedScratchpadAction myScratchpads "terminal")
     , ((mod1Mask,               xK_m), namedScratchpadAction myScratchpads "spotify")
     , ((mod1Mask,               xK_l), namedScratchpadAction myScratchpads "leafpad")
--- xfce bindings
-    , ((modm .|. shiftMask,     xK_l), spawn "xfce4-session-logout")
-    , ((modm .|. shiftMask,     xK_b), spawn "xfce4-panel -r")
 -- workspace keybinds
-    , ((modm .|. shiftMask, xK_1), windows $ W.shift "1")
-    , ((modm .|. shiftMask, xK_2), windows $ W.shift "2")
-    , ((modm .|. shiftMask, xK_3), windows $ W.shift "3")
-    , ((modm .|. shiftMask, xK_4), windows $ W.shift "4")
-    , ((modm .|. shiftMask, xK_5), windows $ W.shift "5")
-    , ((modm .|. shiftMask, xK_6), windows $ W.shift "6")
-    , ((modm .|. shiftMask, xK_7), windows $ W.shift "7")
-    , ((modm .|. shiftMask, xK_8), windows $ W.shift "8")
-    , ((modm .|. shiftMask, xK_9), windows $ W.shift "9")
-    , ((modm,               xK_1), windows $ W.greedyView "1")
-    , ((modm,               xK_2), windows $ W.greedyView "2")
-    , ((modm,               xK_3), windows $ W.greedyView "3")
-    , ((modm,               xK_1), windows $ W.greedyView "4")
-    , ((modm,               xK_2), windows $ W.greedyView "5")
-    , ((modm,               xK_3), windows $ W.greedyView "6")
-    , ((modm,               xK_1), windows $ W.greedyView "7")
-    , ((modm,               xK_2), windows $ W.greedyView "8")
-    , ((modm,               xK_3), windows $ W.greedyView "9")
+    , ((modm .|. shiftMask, xK_1), windows $ W.shift $ myWorkspaces !! 0)
+    , ((modm .|. shiftMask, xK_2), windows $ W.shift $ myWorkspaces !! 1)
+    , ((modm .|. shiftMask, xK_3), windows $ W.shift $ myWorkspaces !! 2)
+    , ((modm .|. shiftMask, xK_4), windows $ W.shift $ myWorkspaces !! 3)
+    , ((modm .|. shiftMask, xK_5), windows $ W.shift $ myWorkspaces !! 4)
+    , ((modm .|. shiftMask, xK_6), windows $ W.shift $ myWorkspaces !! 5)
+    , ((modm .|. shiftMask, xK_7), windows $ W.shift $ myWorkspaces !! 6)
+    , ((modm .|. shiftMask, xK_8), windows $ W.shift $ myWorkspaces !! 7)
+    , ((modm .|. shiftMask, xK_9), windows $ W.shift $ myWorkspaces !! 8)
+    , ((modm,               xK_1), windows $ W.greedyView $ myWorkspaces !! 0)
+    , ((modm,               xK_2), windows $ W.greedyView $ myWorkspaces !! 1)
+    , ((modm,               xK_3), windows $ W.greedyView $ myWorkspaces !! 2)
+    , ((modm,               xK_4), windows $ W.greedyView $ myWorkspaces !! 3)
+    , ((modm,               xK_5), windows $ W.greedyView $ myWorkspaces !! 4)
+    , ((modm,               xK_6), windows $ W.greedyView $ myWorkspaces !! 5)
+    , ((modm,               xK_7), windows $ W.greedyView $ myWorkspaces !! 6)
+    , ((modm,               xK_8), windows $ W.greedyView $ myWorkspaces !! 7)
+    , ((modm,               xK_9), windows $ W.greedyView $ myWorkspaces !! 8)
     ]
