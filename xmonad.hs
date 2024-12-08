@@ -11,6 +11,7 @@ import qualified XMonad.StackSet as W
 import qualified XMonad.Actions.TreeSelect as TS
 import XMonad.Prompt.ConfirmPrompt
 import XMonad.Config.Xfce (xfceConfig)
+import Data.List (isInfixOf)
 
 --utils
 
@@ -54,8 +55,6 @@ import XMonad.Actions.CycleWS
 
 -- qualified
 
-import qualified DBus as D
-import qualified DBus.Client as D
 import qualified Codec.Binary.UTF8.String as UTF8
 import qualified XMonad.Util.Run as Run (safeSpawn, spawnPipe)
 
@@ -82,14 +81,15 @@ myConfig = def
       , workspaces = myWorkspaces
       , manageHook = myManageHook 
       , startupHook = myStartupHook
+      , logHook = myLogHook
       , handleEventHook = handleEventHook def
       }
 
 myBrowser :: String
-myBrowser = "firefox"
+myBrowser = "chromium"
 
 myTerminal :: String
-myTerminal = "st -e tmux"
+myTerminal = "alacritty -e tmux"
 
 myDmenu :: String
 myDmenu = "dmenu_run"
@@ -101,6 +101,12 @@ myWorkspaces = ["1_dev", "2_www", "3_ide", "4_im", "5_stm", "6_doc", "7_vrt", "8
 
 mySoundDir :: String
 mySoundDir = "/opt/sounds/"
+
+myLogHook = dynamicLogWithPP $ def
+    { ppOutput = putStrLn
+    , ppTitle = \t -> if length t > 15 then take 13 t ++ ".." else t
+    , ppLayout = const ""
+    }
 
 myManageHook :: ManageHook
 myManageHook = composeAll
