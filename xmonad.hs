@@ -40,6 +40,7 @@ import XMonad.Layout.Renamed(renamed, Rename(Replace))
 
 -- hooks
 
+import XMonad.Hooks.ManageHelpers
 import XMonad.Hooks.EwmhDesktops
 import XMonad.Hooks.ManageDocks
 import XMonad.Hooks.DynamicLog
@@ -79,14 +80,14 @@ myConfig = def
       , layoutHook = myLayoutHook 
       , keys = myKeys
       , workspaces = myWorkspaces
-      , manageHook = myManageHook 
+      , manageHook = myManageHook
       , startupHook = myStartupHook
       , logHook = myLogHook
       , handleEventHook = handleEventHook def
       }
 
 myBrowser :: String
-myBrowser = "chromium"
+myBrowser = "firefox"
 
 myTerminal :: String
 myTerminal = "alacritty -e tmux"
@@ -112,41 +113,44 @@ myManageHook :: ManageHook
 myManageHook = composeAll
     [ className =? "Krita" --> doFloat
     , className =? "Xmessage" --> doFloat
-    , className =? "steam" --> doFloat
+    , className =? "steam" --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
     , className =? "error" --> doFloat
+    , className =? "Nemo" --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
+    , className =? "code" --> doFullFloat
+    , className =? "vesktop" --> doFloat
+    , className =? "Home" --> doFloat
     , className =? "dialog" --> doFloat
     , className =? "message" --> doFloat
     , className =? "file_progress" --> doFloat
-    , className =? "scratchpad" --> doFloat
-    , className =? "spotify" --> doFloat
-    , className =? "leafpad" --> doFloat
-    , title =? "Xfce4-whiskermenu-popup" --> doFloat 
+    , className =? "Scratchpad" --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
+    , className =? "Spotify" --> doFloat
+    , className =? "Leafpad" --> doRectFloat (W.RationalRect 0.25 0.25 0.5 0.5)
+    , className =? "dunst" --> doFloat 
     , manageDocks
-    ] <+> namedScratchpadManageHook myScratchpads 
+    , namedScratchpadManageHook myScratchpads
+    ] <+> manageHook def 
 
 -- startup 
 
 myStartupHook :: X ()
 myStartupHook = do
-  spawnOnce "polybar &"
-  spawnOnce "picom &"
+  spawnOnce "xdg-desktop-portal &"
+  spawnOnce "polybar left & polybar middle & polybar right &"
+  spawnOnce "flameshot & disown &"
+  spawnOnce "picom --config ~/.config/picom.conf --experimental-backends &"
   spawnOnce "xscreensaver -no-splash &"
   spawnOnce "nitrogen --restore &"
-  spawnOnce "xfce4-session"
+  spawnOnce "dunst &"
+  spawnOnce "unclutter &"
+  spawnOnce "redshift &"
 
 myScratchpads = 
     [ NS "terminal" spawnPad findPad managePad
-    , NS "spotify" "spotify" (className =? "spotify") manageSpotify
-    , NS "leafpad" "leafpad" (className =? "leafpad") manageLeafpad
     ]
     where
-        spawnPad  = "st -c scratchpad"
+        spawnPad  = "alacritty --class scratchpad"
         findPad   = className =? "scratchpad"
-        managePad = customFloating $ W.RationalRect (1 / 2) (1 /2) (1 / 2) (1 / 2)
-       
-        manageSpotify = customFloating $ W.RationalRect (1 / 4) (1 / 4) (1 / 2) (1 / 2)
-        
-        manageLeafpad = customFloating $ W.RationalRect (1 / 4) (1 / 4) (1 / 2) (1 / 2)
+        managePad = customFloating $ W.RationalRect 0.25 0.25 0.5 0.5
 
 -- floating windows
 
@@ -175,12 +179,12 @@ myLayoutHook = avoidStruts $ smartBorders $ myLayout
 myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
      
 -- xmonad keybindings
+
     [ ((modm,                   xK_Return), spawn myTerminal)
     , ((modm .|.  shiftMask,    xK_q), spawn "xmonad --recompile")
     , ((modm .|.  shiftMask,    xK_c), kill)      
     , ((modm .|.  shiftMask,    xK_p), spawn myDmenu)
     , ((modm .|.  shiftMask,    xK_s), spawn myScreenshot)
-    , ((modm .|.  shiftMask,    xK_k), spawn "rofi -show drun")
     , ((modm,                   xK_q), do
     spawn $ "mpv --no-video " ++ mySoundDir ++ "chord.wav" 
     confirmPrompt def "exit" $ spawn "killall Xorg"
@@ -200,8 +204,6 @@ myKeys conf@(XConfig {XMonad.modMask = modm}) = M.fromList $
     , ((modm .|. shiftMask,     xK_d), sendMessage Expand)
 -- scratchpad keybinds
     , ((mod1Mask,               xK_t), namedScratchpadAction myScratchpads "terminal")
-    , ((mod1Mask,               xK_m), namedScratchpadAction myScratchpads "spotify")
-    , ((mod1Mask,               xK_l), namedScratchpadAction myScratchpads "leafpad")
 -- workspace keybinds
     , ((modm .|. shiftMask, xK_1), windows $ W.shift $ myWorkspaces !! 0)
     , ((modm .|. shiftMask, xK_2), windows $ W.shift $ myWorkspaces !! 1)
